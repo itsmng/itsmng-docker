@@ -18,6 +18,8 @@ services:
       retries: 10
   itsmweb :
     image : webdevops/php-apache:7.4
+    depends_on:
+      - itsmdb
     container_name : itsmweb
     restart: always
     ports :

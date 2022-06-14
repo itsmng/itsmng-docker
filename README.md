@@ -19,6 +19,6 @@ When it's finish, go to: http://127.0.0.1:9080
 ## Installation
 
 ```
-git clone https://github.com/itsmng/docker-itsm-ng
+git clone git@github.com:itsmng/itsmng-docker.git
 cd docker-itsm-ng
 ```
