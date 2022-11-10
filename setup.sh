@@ -84,9 +84,9 @@ read
 
 # 3 Récupération de l'archive 
 # Variabiliser les infos ici (1.0.1 / lien git / etc...)
-wget "https://github.com/itsmng/itsm-ng/releases/download/$version/itsm-ng-${version:1}.tar.gz" -q --show-progress
-tar -xf itsm-ng-${version:1}.tar.gz
-rm -rf itsm-ng-${version:1}.tar.gz
+wget "https://github.com/itsmng/itsm-ng/releases/download/$version/itsm-ng-${version:1}.tgz" -q --show-progress
+tar -xf itsm-ng-${version:1}.tgz
+rm -rf itsm-ng-${version:1}.tgz
 mv ./itsm-ng ./itsmng
 
 # Composer a faire en arrière plan
