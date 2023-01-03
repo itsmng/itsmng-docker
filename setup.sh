@@ -90,7 +90,11 @@ rm -rf itsm-ng-${version:1}.tgz
 mv ./itsm-ng ./itsmng
 
 # Composer a faire en arrière plan
-docker-compose up -d
+if [ -x /usr/bin/docker-compose ]; then
+    docker-compose up -d
+else
+    docker compose up -d
+fi
 
 # MAIS détecter que les deux containers soit up et OK (healthy)
 itsmweb=$(docker ps -f name=itsmweb --format "{{.Status}}" | grep -c 'Up')
