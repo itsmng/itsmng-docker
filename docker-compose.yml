@@ -15,18 +15,18 @@ services:
       MARIADB_PASSWORD : itsmng
       MARIADB_DATABASE : itsmng
   itsmdb :
-    image: mysql
+    image: mariadb
     container_name: itsmdb
     command: --default-authentication-plugin=mysql_native_password
     restart: always
     volumes :
       - ./itsmdata:/var/lib/mysql
     environment:
-      MYSQLDB_AUTO_UPGRADE: "yes"
-      MYSQLDB_ROOT_PASSWORD: mysqlrootpwd
-      MYSQLDB_USER : itsmng
-      MYSQLDB_PASSWORD : itsmng
-      MYSQLDB_DATABASE : itsmng
+      MARIADB_AUTO_UPGRADE: "yes"
+      MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+      MARIADB_USER : itsmng
+      MARIADB_PASSWORD : itsmng
+      MARIADB_DATABASE : itsmng
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
       timeout: 20s
