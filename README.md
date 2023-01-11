@@ -21,5 +21,5 @@ For usage, please use our official documentation :
 
 # License
 
-OCS Inventory Docker Image is GPLv3 licensed
+ITSM-NG Docker Image is GPLv3 licensed
 
