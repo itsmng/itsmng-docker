@@ -9,7 +9,9 @@ services:
     ports :
       - "80:80"
     volumes :
-      - ./itsmng:/app
+      - ./itsmng-config:/var/www/itsm-ng/config
+      - ./itsmng-plugins:/var/www/itsm-ng/plugins
+      - ./itsmng-files:/var/www/itsm-ng/files
     environment:
       MARIADB_USER : itsmng
       MARIADB_PASSWORD : itsmng
