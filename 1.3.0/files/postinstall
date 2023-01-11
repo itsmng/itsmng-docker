@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if ! test -f /var/www/itsm-ng/config_db.php; then
+	sleep 10
+	cd /var/www/itsm-ng && php bin/console itsmng:database:install -H itsmdb -u $MARIADB_USER -p $MARIADB_PASSWORD -d $MARIADB_DATABASE -n
+	chown -R apache:apache /var/www/itsm-ng/files
+	rm /var/www/itsm-ng/install/install.php
+fi
