@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if [ ! -f /var/www/itsm-ng/config/config_db.php ]; then
-	sleep 10
+	sleep 7
 	cd /var/www/itsm-ng/files/
 	mkdir _cache _cron _dumps _graphs _locales _lock _log _pictures _plugins _rss _sessions _tmp _uploads
 	cd /var/www/itsm-ng && php bin/console itsmng:database:install -H itsmdb -u $MARIADB_USER -p $MARIADB_PASSWORD -d $MARIADB_DATABASE -n
