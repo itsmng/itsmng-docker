@@ -62,7 +62,7 @@ services:
       MARIADB_PASSWORD : itsmng
       MARIADB_DATABASE : itsmng
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p$$YSQL_ROOT_PASSWORD"]
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p$MARIADB_PASSWORD"]
       timeout: 20s
       retries: 10
 ```
