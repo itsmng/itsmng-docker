@@ -54,7 +54,7 @@ services:
     command: --default-authentication-plugin=mysql_native_password
     restart: always
     volumes :
-      - ../itsmdata:/var/lib/mysql
+      - ./itsmdata:/var/lib/mysql
     environment:
       MARIADB_AUTO_UPGRADE: "yes"
       MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
