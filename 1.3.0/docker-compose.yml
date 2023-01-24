@@ -27,6 +27,7 @@ services:
     environment:
       MARIADB_AUTO_UPGRADE: "yes"
       MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+      MYSQL_ROOT_PASSWORD: iamastrongpassword
       MARIADB_USER : itsmng
       MARIADB_PASSWORD : itsmng
       MARIADB_DATABASE : itsmng
