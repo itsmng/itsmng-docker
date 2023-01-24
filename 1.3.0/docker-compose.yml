@@ -18,7 +18,7 @@ services:
       MARIADB_PASSWORD : itsmng
       MARIADB_DATABASE : itsmng
   itsmdb :
-    image: mariadb
+    image: mariadb:10.6
     container_name: itsmdb
     command: --default-authentication-plugin=mysql_native_password
     restart: always
