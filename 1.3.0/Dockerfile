@@ -1,19 +1,26 @@
-FROM alpine:3.17
+FROM debian:bookworm
 
 ARG VERSION=1.3.0
 
-RUN apk add --no-cache apache2 bash curl php php-apache2 php-gd php-mbstring php-intl php-opcache php-ldap php-curl php-json php-simplexml php-xml php-mysqli php-fileinfo php-session php-ctype php-iconv php-sodium php-exif php81-pecl-apcu
+RUN apt update && apt dist-upgrade -y && \
+        apt install -y apache2 wget php php-fpm php-mysql php-intl php-mbstring php-gd php-ldap php-simplexml php-curl php-apcu php-xmlrpc && \
+        a2enmod proxy_fcgi setenvif && \
+        a2enconf php8.2-fpm && \
+        apt-get -y clean && \
+	    rm -r /var/lib/apt/lists/* && \
+        rm /etc/apache2/sites-enabled/000-default.conf
+
 RUN cd /var/www && \
-        wget "https://github.com/itsmng/itsm-ng/releases/download/v${VERSION}/itsm-ng-${VERSION}.tgz" && \
+        wget -q "https://github.com/itsmng/itsm-ng/releases/download/v${VERSION}/itsm-ng-${VERSION}.tgz" && \
         tar -xf itsm-ng-${VERSION}.tgz && \
         rm -rf itsm-ng-${VERSION}.tgz && \
-        chown -R apache:apache /var/www/itsm-ng
+        chown -R www-data:www-data /var/www/itsm-ng
 
-COPY files/itsm-ng.conf /etc/apache2/conf.d/
+COPY files/itsm-ng.conf /etc/apache2/sites-enabled/
 COPY ./docker-entrypoint.sh /docker-entrypoint.sh
 COPY ./docker-entrypoint.d /docker-entrypoint.d
 
 EXPOSE 80
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD /usr/sbin/httpd -X
+CMD /etc/init.d/php8.2-fpm start && apachectl -D FOREGROUND
