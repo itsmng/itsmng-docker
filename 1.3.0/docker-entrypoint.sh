@@ -3,6 +3,12 @@
 
 set -e
 
+if [ -z "${ITSMNG_ENTRYPOINT_QUIET_LOGS:-}" ]; then
+        exec 3>&1
+    else
+        exec 3>/dev/null
+fi
+
 if /usr/bin/find "/docker-entrypoint.d/" -mindepth 1 -maxdepth 1 -type f -print -quit 2>/dev/null | read v; then
     echo >&3 "$0: /docker-entrypoint.d/ is not empty, will attempt to perform configuration"
 
