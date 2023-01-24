@@ -13,6 +13,7 @@ services:
       - ../itsmng-plugins:/var/www/itsm-ng/plugins
       - ../itsmng-files:/var/www/itsm-ng/files
     environment:
+      MARIADB_HOST : itsmdb
       MARIADB_USER : itsmng
       MARIADB_PASSWORD : itsmng
       MARIADB_DATABASE : itsmng
