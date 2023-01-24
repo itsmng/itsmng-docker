@@ -1,7 +1,7 @@
 version: '3'
 services:
   itsmweb :
-    image : itsm-ng:1.3.0
+    image : itsm-ng/itsmng:1.3.0
     depends_on:
       - itsmdb
     container_name : itsmweb
