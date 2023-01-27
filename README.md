@@ -9,62 +9,85 @@ ITSM-NG is a GLPI fork with the objective of offering a strong community compone
   - [Github](https://github.com/itsmng)
   - [Wiki](https://wiki.itsm-ng.org)
 
-# Storage of Data
+# How to use this image
+## Start a mariadb server instance
+Starting a MariaDB instance with the latest version is simple:
+
+```
+docker run --detach --name itsm-ng --env MARIADB_HOST=itsmdb --env MARIADB_USER=itsmng --env MARIADB_PASSWORD=itsmng --env MARIADB_DATABASE=itsmng  itsm-ng:latest
+```
+
+## Environment Variables
+Currently, we provide four variables to give the connection information to your MariaDB/MySQL database.
+
+`MARIADB_HOST`
+
+This variable is used to define the IP address of the database. This value can take an IP or a DNS/NetBIOS name.
+
+`MARIADB_USER`
+
+This variable is used to define the username to access on the database. You can use the root user or a specific user.
+
+`MARIADB_PASSWORD`
+
+This variable is used to define the password of the user database. If you have not a password, leave this variable empty.
+
+`MARIADB_DATABASE`
+
+This variable is used to define the database name. This database is used to save all of your tickets and data of your ITSM.
+The user must have access to this database with writing permission.
+
+## Default volumes configuration
+The itsm-ng app is stored in `/var/www/itsm-ng` directory, this is the list of important files
 
 | Volumes        | Description                                                                   |
 |----------------|-------------------------------------------------------------------------------|
-| itsmng-config  | He contain the database Information, the name and the login of MySQL database |
-| itsmng-plugins | He contain all of the ITSM-NG plugins files                                   |
-| itsmng-files   | He contain all of the attachments, and profile picture                        |
-| itsmdata       | He contain all of the files of MariaDB.                                       |
+| itsmng-config  | The directory contains the database Information, the name and the login of MySQL database |
+| itsmng-plugins | The directory contains all of the ITSM-NG plugins files                                  |
+| itsmng-files   | The directory contains all of the attachments, and profile picture                      |
+| itsmdata       | The directory contains all of the files of MariaDB.                                     |
 
-# To start the container and the installation 
-```
-docker-compose up -d
-```
-
-# To shutdown the container 
-```
-docker-compose down
-```
-
-# Docker-Compose.yml
+## Docker-Compose.yml
 ```
 version: '3'
 services:
   itsmweb :
-    image : itsm-ng
+    image : itsm-ng/itsmng:1.3.0
     depends_on:
       - itsmdb
     container_name : itsmweb
     restart: always
     ports :
-      - "80:80"
+      - "8080:80"
     volumes :
-      - ./itsmng-config:/var/www/itsm-ng/config
-      - ./itsmng-plugins:/var/www/itsm-ng/plugins
-      - ./itsmng-files:/var/www/itsm-ng/files
+      - itsmng-config:/var/www/itsm-ng/config
+      - itsmng-plugins:/var/www/itsm-ng/plugins
+      - itsmng-files:/var/www/itsm-ng/files
     environment:
+      MARIADB_HOST : itsmdb
       MARIADB_USER : itsmng
       MARIADB_PASSWORD : itsmng
       MARIADB_DATABASE : itsmng
   itsmdb :
-    image: mariadb
+    image: mariadb:10.6
     container_name: itsmdb
     command: --default-authentication-plugin=mysql_native_password
     restart: always
     volumes :
-      - ./itsmdata:/var/lib/mysql
+      - itsmng-data:/var/lib/mysql
     environment:
       MARIADB_AUTO_UPGRADE: "yes"
       MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+      MYSQL_ROOT_PASSWORD: iamastrongpassword
       MARIADB_USER : itsmng
       MARIADB_PASSWORD : itsmng
       MARIADB_DATABASE : itsmng
-    healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p$MARIADB_PASSWORD"]
-      timeout: 20s
-      retries: 10
+
+volumes:
+  itsmng-config:
+  itsmng-plugins:
+  itsmng-files:
+  itsmng-data:
 ```
 
 # Contributing
