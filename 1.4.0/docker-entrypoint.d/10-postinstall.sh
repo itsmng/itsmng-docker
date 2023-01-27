@@ -6,3 +6,8 @@ if [ ! -f /var/www/itsm-ng/config/config_db.php ]; then
 	chown -R www-data:www-data /var/www/itsm-ng/files
 	rm /var/www/itsm-ng/install/install.php
 fi
+
+if [ -f /var/www/itsm-ng/config/config_db.php ]; then
+	sleep 5
+	cd /var/www/itsm-ng && php bin/console itsmng:database:update -n
+fi
