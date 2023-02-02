@@ -25,7 +25,7 @@ To start application instance with the latest version :
     -e MARIADB_DATABASE=[DB_NAME] \
     -e MARIAD_USER=[DB_USER] \
     -e MARIADB_PASSWORD=[DB_PASSWORD] \
-    -idt itsm-ng/itsmng:latest
+    -idt itsmng/itsm-ng:latest
 
 ### Stack
 
@@ -78,7 +78,7 @@ Below you will find the volumes list created by ITSM-NG docker application and t
     version: '3'
     services:
       itsmweb :
-        image : itsm-ng/itsmng:1.3.0
+        image : itsmng/itsm-ng:1.3.0
         depends_on:
           - itsmdb
         container_name : itsmweb
