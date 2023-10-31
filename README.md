@@ -19,17 +19,17 @@ Before run ITSM-NG instance, please refer to the [MariaDB docker documentation](
 
 To start application instance with the latest version :
 
-    docker run \
+    podman run \
     --name [MY_CONTAINER_NAME] \
     -e MARIADB_HOST=[DB_HOST] \
     -e MARIADB_DATABASE=[DB_NAME] \
     -e MARIAD_USER=[DB_USER] \
     -e MARIADB_PASSWORD=[DB_PASSWORD] \
-    -idt itsmng/itsm-ng:latest
+    -idt docker.io/itsmng/itsm-ng:latest
 
 ### Stack
 
-We have a `docker-compose` example in every folder for each tag of our image.
+We have a `podman-compose` example in every folder for each tag of our image.
 
 To get these examples / templates, clone our git repository :
 
@@ -37,15 +37,15 @@ To get these examples / templates, clone our git repository :
 
 To start the ITSM-NG application stack, run the following command :
 
-    docker-compose up -d
+    podman-compose up -d
 
 By default, volume names use the current version as a prefix (i.e. 1.3.0 => 130_volumename). You can set a custom prefix with the next command :
 
-    docker-compose -p MY_PREFIX up -d
+    podman-compose -p MY_PREFIX up -d
 
 You can check if containers are running correctly with the next command :
 
-    docker container ls -a
+    podman container ls
 
 The container status is `Up` if it works.
 
@@ -78,7 +78,7 @@ Below you will find the volumes list created by ITSM-NG docker application and t
     version: '3'
     services:
       itsmweb :
-        image : itsmng/itsm-ng:1.3.0
+        image : docker.io/itsmng/itsm-ng:1.5.1
         depends_on:
           - itsmdb
         container_name : itsmweb
@@ -95,7 +95,7 @@ Below you will find the volumes list created by ITSM-NG docker application and t
           MARIADB_PASSWORD : itsmng
           MARIADB_DATABASE : itsmng
       itsmdb :
-        image: mariadb:10.6
+        image: docker.io/mariadb:10.6
         container_name: itsmdb
         command: --default-authentication-plugin=mysql_native_password
         restart: always
