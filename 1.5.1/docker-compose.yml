@@ -8,10 +8,10 @@ services:
     restart: always
     ports :
       - "8080:8080"
-    # volumes :
-    #   - itsmng-config:/var/www/itsm-ng/config
-    #   - itsmng-plugins:/var/www/itsm-ng/plugins
-    #   - itsmng-files:/var/www/itsm-ng/files
+    volumes :
+      - itsmng-config:/etc/itsm-ng/config
+      - itsmng-plugins:/usr/share/itsm-ng/plugins
+      - itsmng-files:/usr/share/itsm-ng/files
     environment:
       MARIADB_HOST : itsmdb
       MARIADB_USER : itsmng
@@ -22,8 +22,8 @@ services:
     container_name: itsmdb
     command: --default-authentication-plugin=mysql_native_password
     restart: always
-    # volumes :
-    #   - itsmng-data:/var/lib/mysql
+    volumes :
+      - itsmng-data:/var/lib/mysql
     environment:
       MARIADB_AUTO_UPGRADE: "yes"
       MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
@@ -32,8 +32,8 @@ services:
       MARIADB_PASSWORD : itsmng
       MARIADB_DATABASE : itsmng
 
-# volumes:
-#   itsmng-config:
-#   itsmng-plugins:
-#   itsmng-files:
-#   itsmng-data:
+volumes:
+  itsmng-config:
+  itsmng-plugins:
+  itsmng-files:
+  itsmng-data:
