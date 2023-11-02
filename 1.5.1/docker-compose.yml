@@ -9,7 +9,7 @@ services:
     ports :
       - "8080:8080"
     volumes :
-      - itsmng-config:/etc/itsm-ng/config
+      - itsmng-config:/etc/itsm-ng
       - itsmng-plugins:/usr/share/itsm-ng/plugins
       - itsmng-files:/usr/share/itsm-ng/files
     environment:
