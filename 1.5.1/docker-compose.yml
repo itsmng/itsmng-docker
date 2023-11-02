@@ -9,9 +9,9 @@ services:
     ports :
       - "8080:8080"
     volumes :
-      - itsmng-config:/etc/itsm-ng
-      - itsmng-plugins:/usr/share/itsm-ng/plugins
-      - itsmng-files:/usr/share/itsm-ng/files
+      - itsmng-config:/var/www/itsm-ng/config
+      - itsmng-plugins:/var/www/itsm-ng/plugins
+      - itsmng-files:/var/www/itsm-ng/files
     environment:
       MARIADB_HOST : itsmdb
       MARIADB_USER : itsmng
