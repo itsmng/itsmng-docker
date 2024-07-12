@@ -1,7 +1,7 @@
 FROM debian:bookworm-slim
 
 ARG REPO="itsmng"
-ARG VERSION=2.0.0_rc3
+ARG VERSION=2.0.0_rc4
 
 RUN apt update && apt dist-upgrade -y && \
         apt install -y apache2 wget php php-fpm php-mysql php-intl php-mbstring php-gd php-ldap php-simplexml php-curl php-apcu php-xmlrpc && \
@@ -14,8 +14,7 @@ RUN apt update && apt dist-upgrade -y && \
 RUN cd /var/www && \
         wget -q "https://github.com/$REPO/itsm-ng/releases/download/v$VERSION/itsm-ng-$VERSION.tgz" && \
         tar -xf itsm-ng-${VERSION}.tgz && \
-        rm -rf itsm-ng-${VERSION}.tgz && \
-        chown -R www-data:www-data /var/www/itsm-ng
+        rm -rf itsm-ng-${VERSION}.tgz
 
 COPY files/itsm-ng.conf /etc/apache2/sites-enabled/
 COPY ./docker-entrypoint.sh /docker-entrypoint.sh

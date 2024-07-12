@@ -11,3 +11,5 @@ if [ -f /var/www/itsm-ng/config/config_db.php ]; then
 	sleep 5
 	cd /var/www/itsm-ng && php bin/console itsmng:database:update -n
 fi
+
+chown -R www-data:www-data /var/www/itsm-ng/files /var/www/itsm-ng/config
