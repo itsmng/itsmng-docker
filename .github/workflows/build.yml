@@ -31,4 +31,4 @@ jobs:
           tags: |
             ghcr.io/minzords/itsmng-docker:latest
             ghcr.io/minzords/itsmng-docker:${{ github.ref_name }}
-          working-directory: latest
+          context: latest
