@@ -1,6 +1,6 @@
 FROM debian:bookworm-slim
 
-ARG REPO="minzords"
+ARG REPO="itsmng"
 ARG VERSION=1.6.5
 
 RUN apt update && apt dist-upgrade -y && \
