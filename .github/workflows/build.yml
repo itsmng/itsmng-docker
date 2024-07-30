@@ -36,8 +36,8 @@ jobs:
         with:
           push: true
           tags: |
-            ghcr.io/minzords/itsmng-docker:latest
             ghcr.io/minzords/itsmng-docker:${{ github.ref_name }}
-            docker.io/minzords/itsmng-docker:latest
+            ghcr.io/minzords/itsmng-docker:latest
             docker.io/minzords/itsmng-docker:${{ github.ref_name }}
+            docker.io/minzords/itsmng-docker:latest
           context: latest
