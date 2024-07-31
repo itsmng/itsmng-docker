@@ -41,3 +41,4 @@ jobs:
             docker.io/itsmng/itsm-ng:${{ github.ref_name }}
             docker.io/itsmng/itsm-ng:latest
           context: latest
+          platforms: linux/amd64,linux/arm64
