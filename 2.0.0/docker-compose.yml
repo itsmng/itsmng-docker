@@ -1,7 +1,7 @@
 version: '3'
 services:
   itsmweb :
-    image : docker.io/itsmng/itsm-ng:2.0.0_rc4
+    image : docker.io/itsmng/itsm-ng:2.0.0
     depends_on:
       - itsmdb
     container_name : itsmweb
