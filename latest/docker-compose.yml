@@ -1,13 +1,11 @@
 version: '3'
 services:
   itsmweb :
-    image : docker.io/itsmng/itsm-ng:1.6.3
+    image : docker.io/itsmng/itsm-ng:latest
     depends_on:
       - itsmdb
     container_name : itsmweb
     restart: always
-    ports :
-      - "8080:80"
     volumes :
       - itsmng-config:/var/www/itsm-ng/config
       - itsmng-plugins:/var/www/itsm-ng/plugins
