@@ -1,7 +1,7 @@
 CTN=`which podman >/dev/null 2>&1 && echo podman || echo docker`
 IMAGENAME="docker.io/itsmng/itsmng"
 REPO="itsmng"
-VVERSION="v2.0.0"
+VVERSION="v2.0.1"
 
 
 all: 
