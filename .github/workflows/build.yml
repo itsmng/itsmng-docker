@@ -41,6 +41,6 @@ jobs:
             docker.io/itsmng/itsm-ng:${{ github.ref_name }}
             docker.io/itsmng/itsm-ng:latest
           context: latest
-            - cache-from: type=gha
-            - cache-to: type=gha,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
