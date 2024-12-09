@@ -8,6 +8,6 @@ done
 
 # Run the installation if config_db.php doesn't exist
 if [ ! -f /var/www/itsm-ng/config/config_db.php ]; then
-	chown -R www-data:www-data /var/www/itsm-ng/files/
+	chmod -R 777 /var/www/itsm-ng/files/_session
 	cd /var/www/itsm-ng && php bin/console itsmng:database:install -H $MARIADB_HOST -u $MARIADB_USER -p $MARIADB_PASSWORD -d $MARIADB_DATABASE -n
 fi
