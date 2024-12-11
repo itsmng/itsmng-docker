@@ -38,5 +38,7 @@ jobs:
           tags: |
             ghcr.io/itsmng/itsm-ng:${{ github.ref_name }}
             docker.io/itsmng/itsm-ng:${{ github.ref_name }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
           context: latest
           platforms: linux/amd64,linux/arm64
