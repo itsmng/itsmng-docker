@@ -44,3 +44,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+
+
+
+      - name: Build and push cron image
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: |
+            ghcr.io/itsmng/itsm-ng:${{ github.ref_name }}-cron
+            ghcr.io/itsmng/itsm-ng:latest-cron
+          context: latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
