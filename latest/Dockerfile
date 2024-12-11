@@ -1,10 +1,10 @@
 FROM debian:bookworm-slim
 
 ARG REPO="itsmng"
-ARG VERSION=2.0.2
+ARG VERSION
 
 RUN apt update && apt dist-upgrade -y && \
-        apt install -y apache2 wget php php-fpm php-mysql php-intl php-mbstring php-gd php-ldap php-simplexml php-curl php-apcu php-xmlrpc && \
+        apt install -y apache2 wget php php-fpm php-mysql php-intl php-mbstring php-gd php-ldap php-simplexml php-curl php-apcu php-xmlrpc netcat-traditional && \
         a2enmod proxy_fcgi setenvif && \
         a2enconf php8.2-fpm && \
         apt-get -y clean && \
