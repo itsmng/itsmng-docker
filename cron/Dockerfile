@@ -1,7 +1,7 @@
 FROM ghcr.io/itsmng/itsm-ng:latest-cron
 
 ARG REPO="itsmng"
-ARG VERSION=2.0.2
+ARG VERSION
 
 RUN 	apt update &&\
 	apt install wget -y && \
