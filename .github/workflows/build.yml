@@ -40,6 +40,8 @@ jobs:
             ghcr.io/itsmng/itsm-ng:latest
             docker.io/itsmng/itsm-ng:${{ github.ref_name }}
             docker.io/itsmng/itsm-ng:latest
+          build-args: |
+            VERSION=${{ github.ref_name }}
           context: latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -54,6 +56,8 @@ jobs:
           tags: |
             ghcr.io/itsmng/itsm-ng:${{ github.ref_name }}-cron
             ghcr.io/itsmng/itsm-ng:latest-cron
+          build-args: |
+            VERSION=${{ github.ref_name }}
           context: cron
           cache-from: type=gha
           cache-to: type=gha,mode=max
