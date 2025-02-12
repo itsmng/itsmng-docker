@@ -12,9 +12,9 @@ RUN apt update && apt dist-upgrade -y && \
         rm /etc/apache2/sites-enabled/000-default.conf
 
 RUN cd /var/www && \
-        wget -q "https://github.com/$REPO/itsm-ng/releases/download/v$VERSION/itsm-ng-$VERSION.tgz" && \
-        tar -xf itsm-ng-${VERSION}.tgz && \
-        rm -rf itsm-ng-${VERSION}.tgz
+        wget -q "https://github.com/$REPO/itsm-ng/releases/download/v$VERSION/itsm-ng-v$VERSION.tgz" && \
+        tar -xf itsm-ng-v${VERSION}.tgz && \
+        rm -rf itsm-ng-v${VERSION}.tgz
 
 COPY files/itsm-ng.conf /etc/apache2/sites-enabled/
 COPY ./docker-entrypoint.sh /docker-entrypoint.sh
