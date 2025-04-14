@@ -9,7 +9,8 @@ RUN apt update && apt dist-upgrade -y && \
         a2enconf php8.2-fpm && \
         apt-get -y clean && \
 	    rm -r /var/lib/apt/lists/* && \
-        rm /etc/apache2/sites-enabled/000-default.conf
+        rm /etc/apache2/sites-enabled/000-default.conf && \
+	echo "apc.enable_cli=1" >> /etc/php/8.2/cli/conf.d/20-apcu.ini
 
 RUN cd /var/www && \
         wget -q "https://github.com/$REPO/itsm-ng/releases/download/v$VERSION/itsm-ng-v$VERSION.tgz" && \
