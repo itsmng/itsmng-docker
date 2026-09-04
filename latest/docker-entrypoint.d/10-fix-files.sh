@@ -16,3 +16,10 @@ if [ ! -d /var/www/itsm-ng/files/_cache ]; then
 	chown -R www-data:www-data /var/www/itsm-ng/files
 fi
 
+if [ -f /etc/itsm-ng/local_define.php ]; then
+    cat > /var/www/itsm-ng/config/local_define.php <<'EOF'
+<?php
+define('GLPI_VAR_DIR', '/var/lib/itsm-ng');
+define('GLPI_DOC_DIR', GLPI_VAR_DIR);
+EOF
+fi

@@ -78,7 +78,7 @@ Below you will find the volumes list created by ITSM-NG docker application and t
     version: '3'
     services:
       itsmweb :
-        image : docker.io/itsmng/itsm-ng:1.5.1
+        image : docker.io/itsmng/itsm-ng:latest
         depends_on:
           - itsmdb
         container_name : itsmweb
@@ -86,14 +86,38 @@ Below you will find the volumes list created by ITSM-NG docker application and t
         ports :
           - "8080:80"
         volumes :
-          - itsmng-config:/var/www/itsm-ng/config
-          - itsmng-plugins:/var/www/itsm-ng/plugins
-          - itsmng-files:/var/www/itsm-ng/files
+          - itsmng-config:/etc/itsm-ng/config
+          - itsmng-plugins:/usr/share/itsm-ng/plugins
+          - itsmng-files:/var/lib/itsm-ng
         environment:
           MARIADB_HOST : itsmdb
           MARIADB_USER : itsmng
           MARIADB_PASSWORD : itsmng
           MARIADB_DATABASE : itsmng
+          # ITSMNG_PLUGINS: |
+          #   accounts
+          #   barcode
+          #   consumables
+          #   databases
+          #   dashboardng
+          #   datainjection
+          #   edittraduction
+          #   escalade
+          #   fields
+          #   formcreator
+          #   genericobject
+          #   mreporting
+          #   news
+          #   oauthimap
+          #   ocsinventoryng
+          #   okta
+          #   onetimesecret
+          #   pdf
+          #   tag
+          #   timelineticket
+          #   useditemsexport
+          #   whitelabel
+          #   workflows
       itsmdb :
         image: docker.io/mariadb:10.6
         container_name: itsmdb
