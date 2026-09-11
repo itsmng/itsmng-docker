@@ -6,6 +6,23 @@ services:
       - itsmdb
     container_name : itsmweb
     restart: always
+    ports :
+      - "8080:8080"
+    # Runs entirely as the unprivileged www-data user (uid/gid 33), no root
+    # capability, no privilege escalation and a read-only root filesystem;
+    # mirrors the securityContext expected in a PSS "restricted" Kubernetes cluster.
+    user: "33:33"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
+      - /run/apache2
+      - /var/lock/apache2
+      - /var/log/apache2
+      - /run/php
     volumes :
       - itsmng-config:/etc/itsm-ng/config
       - itsmng-plugins:/usr/share/itsm-ng/plugins
@@ -15,7 +32,9 @@ services:
       MARIADB_USER : itsmng
       MARIADB_PASSWORD : itsmng
       MARIADB_DATABASE : itsmng
-      # ITSMNG_PLUGINS: |
+      # Plugins can no longer be installed at runtime (it required root and a
+      # writable root filesystem). Build the image with
+      # --build-arg ITSMNG_PLUGINS="accounts barcode ..." instead.
       #   accounts
       #   barcode
       #   consumables
