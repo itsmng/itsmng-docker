@@ -51,6 +51,52 @@ The container status is `Up` if it works.
 
 Now, your ITSM-NG application is available at the following address [http://localhost:8080](http://localhost:8080).
 
+## Running under a restricted PodSecurityStandard (Kubernetes)
+
+Since this image, the container runs entirely as the unprivileged `www-data` user
+(uid/gid `33`), listens on port `8080` (not `80`), and never needs to `chown`/`chmod`
+anything at runtime. This makes it compatible with a `securityContext` such as:
+
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsGroup: 33
+      runAsNonRoot: true
+      runAsUser: 33
+      fsGroup: 33
+      seLinuxOptions: {}
+      seccompProfile:
+        type: RuntimeDefault
+
+Because the root filesystem is read-only, Apache/PHP-FPM still need a few
+writable, non-persistent directories for pid/lock/log files. Mount an
+`emptyDir` volume on each of the following paths:
+
+| Path                 | Purpose                          |
+|----------------------|-----------------------------------|
+| `/tmp`               | Generic scratch space            |
+| `/run/apache2`       | Apache PID file                  |
+| `/var/lock/apache2`  | Apache lock files                |
+| `/var/log/apache2`   | Apache logs (also sent to stdout/stderr) |
+| `/run/php`           | PHP-FPM socket/PID file           |
+
+With Kubernetes, the `fsGroup: 33` in the `securityContext` above makes the
+kubelet automatically set up each `emptyDir` as group-writable by `33`, so no
+extra configuration is needed. When testing locally with plain `docker run
+--read-only --tmpfs ...`, pass an explicit owner on each mount (Docker's
+tmpfs defaults to `root:root`), e.g. `--tmpfs /tmp:uid=33,gid=33`.
+
+Plugins can no longer be installed at runtime (it required root privileges and
+a writable root filesystem). Bake them into the image instead with the
+`ITSMNG_PLUGINS` build argument, e.g.:
+
+    podman build --build-arg ITSMNG_PLUGINS="accounts barcode formcreator" -t itsmng .
+
+
 ## Environment variables
 
 You will find below the list of all available environments variables for our docker image.
@@ -84,7 +130,7 @@ Below you will find the volumes list created by ITSM-NG docker application and t
         container_name : itsmweb
         restart: always
         ports :
-          - "8080:80"
+          - "8080:8080"
         volumes :
           - itsmng-config:/etc/itsm-ng/config
           - itsmng-plugins:/usr/share/itsm-ng/plugins
@@ -94,7 +140,7 @@ Below you will find the volumes list created by ITSM-NG docker application and t
           MARIADB_USER : itsmng
           MARIADB_PASSWORD : itsmng
           MARIADB_DATABASE : itsmng
-          # ITSMNG_PLUGINS: |
+          # Install plugins at build time instead (--build-arg ITSMNG_PLUGINS="..."):
           #   accounts
           #   barcode
           #   consumables
