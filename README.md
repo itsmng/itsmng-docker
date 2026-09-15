@@ -9,135 +9,147 @@ ITSM-NG is a GLPI fork with the objective of offering a strong community compone
   - [Github](https://github.com/itsmng)
   - [Wiki](https://wiki.itsm-ng.org)
 
+# Image design
+
+A single image covers every role. There is no entrypoint and no start-up
+configuration script: the container runs Apache as PID 1, and one-shot
+operations are explicit commands.
+
+| Command | Purpose |
+|-----------------|-----------------------------------------------------------|
+| *(default)* | `apache2 -D FOREGROUND`, serves the application on `:8080` |
+| `itsmng-init` | creates the data tree, then installs or migrates the schema |
+| `itsmng-cron` | runs one pass of the scheduled tasks and exits |
+| `itsmng-console`| wrapper around `bin/console` |
+
+Everything is decided at build time:
+
+  - **No `apt-get` at runtime.** Plugins are baked into the image through the
+    `ITSMNG_PLUGINS` build argument, so a container is reproducible and its
+    filesystem can stay read-only.
+  - **No `chown` / `chmod` at runtime.** Writable paths belong to group `0`
+    with the owner's permissions, so the image runs under an arbitrary UID.
+    On Kubernetes, `fsGroup` does what the old `chown -R` used to do.
+  - **No configuration written at runtime.** `/etc/itsm-ng/config_db.php` is
+    shipped in the image and reads the environment.
+  - **Non-root, unprivileged.** UID `1000`, group `0`, port `8080`, no
+    capability required: compatible with the Kubernetes Pod Security
+    Admission `restricted` profile and with `readOnlyRootFilesystem: true`.
+  - **One process per container.** Apache with `mod_php`, no `php-fpm`
+    started from an init script, no supervisor, no cron daemon.
+
+Only `/var/lib/itsm-ng` needs to persist. `/tmp` and `/run/apache2` must be
+writable, and a `tmpfs` / `emptyDir` is enough for both.
+
 # How to use ITSM-NG image
 
-## Run an ITSM-NG instance
-
-### Standalone
-
-Before run ITSM-NG instance, please refer to the [MariaDB docker documentation](https://hub.docker.com/_/mariadb) to create your own database container.
-
-To start application instance with the latest version :
-
-    podman run \
-    --name [MY_CONTAINER_NAME] \
-    -e MARIADB_HOST=[DB_HOST] \
-    -e MARIADB_DATABASE=[DB_NAME] \
-    -e MARIAD_USER=[DB_USER] \
-    -e MARIADB_PASSWORD=[DB_PASSWORD] \
-    -idt docker.io/itsmng/itsm-ng:latest
-
-### Stack
-
-We have a `podman-compose` example in every folder for each tag of our image.
-
-To get these examples / templates, clone our git repository :
+## Stack (Compose)
 
     git clone https://github.com/itsmng/itsmng-docker
+    cd itsmng-docker/latest
+    cp .env.example .env        # then set MARIADB_PASSWORD
+    docker compose up -d
 
-To start the ITSM-NG application stack, run the following command :
+The stack starts MariaDB, waits for it to be healthy, runs `itsmng-init`
+once, then starts the web container. The application is available on
+[http://localhost:8080](http://localhost:8080).
 
-    podman-compose up -d
+Run the scheduled tasks, or any console command:
 
-By default, volume names use the current version as a prefix (i.e. 1.3.0 => 130_volumename). You can set a custom prefix with the next command :
+    docker compose run --rm cron
+    docker compose run --rm itsmng-console itsmng:database:update
 
-    podman-compose -p MY_PREFIX up -d
+## Standalone
 
-You can check if containers are running correctly with the next command :
+    docker run -d --name itsm-ng \
+      -e MARIADB_HOST=db.example.org \
+      -e MARIADB_USER=itsmng \
+      -e MARIADB_PASSWORD=... \
+      -e MARIADB_DATABASE=itsmng \
+      -p 8080:8080 \
+      --read-only --tmpfs /tmp --tmpfs /run/apache2 \
+      --cap-drop ALL --security-opt no-new-privileges \
+      -v itsmng-data:/var/lib/itsm-ng \
+      ghcr.io/itsmng/itsm-ng:latest
 
-    podman container ls
+Initialise the database once, with the same environment and volume:
 
-The container status is `Up` if it works.
+    docker run --rm -e MARIADB_HOST=... [...] \
+      -v itsmng-data:/var/lib/itsm-ng \
+      ghcr.io/itsmng/itsm-ng:latest itsmng-init
 
-Now, your ITSM-NG application is available at the following address [http://localhost:8080](http://localhost:8080).
+## Kubernetes
+
+`deploy/kubernetes/` holds a complete example compliant with the
+`restricted` Pod Security Admission profile: Deployment (read-only rootfs,
+`emptyDir` for `/tmp` and `/run/apache2`), Service, PVC, the `itsmng-init`
+Job and the `itsmng-cron` CronJob.
+
+    kubectl create ns itsm-ng
+    kubectl label ns itsm-ng \
+      pod-security.kubernetes.io/enforce=restricted \
+      pod-security.kubernetes.io/enforce-version=latest
+    kubectl -n itsm-ng apply -k deploy/kubernetes
+    kubectl -n itsm-ng wait --for=condition=complete job/itsm-ng-init --timeout=10m
+
+The web Deployment never touches the schema; re-run the Job after a version
+bump to apply migrations.
 
 ## Environment variables
 
-You will find below the list of all available environments variables for our docker image.
+| Variable | Description | Default |
+|--------------------|-------------------------------------------|-------------|
+| `MARIADB_HOST` | database hostname | `localhost` |
+| `MARIADB_PORT` | database port | `3306` |
+| `MARIADB_USER` | database username | `itsmng` |
+| `MARIADB_PASSWORD` | database user password | |
+| `MARIADB_DATABASE` | database name | `itsmng` |
+| `MARIADB_SSL_CA` | CA bundle for TLS to the database | |
+| `MARIADB_SSL_CERT` | client certificate for TLS | |
+| `MARIADB_SSL_KEY` | client key for TLS | |
 
-| Variable           | Description                               |
-|--------------------|-------------------------------------------|
-| `MARIADB_HOST`     | Used to define the database hostname      |
-| `MARIADB_USER`     | Used to define the database username      |
-| `MARIADB_PASSWORD` | Used to define the database user password |
-| `MARIADB_DATABASE` | Used to define the database name          |
+Every variable above also accepts a `_FILE` suffix pointing at a file
+(`MARIADB_PASSWORD_FILE=/run/secrets/itsm-ng/password`). Use that form with a
+Kubernetes Secret or a Docker secret so the credential never appears in the
+process environment.
 
-## Volumes information
+`itsmng-init` additionally reads `ITSMNG_DB_WAIT_TIMEOUT` (seconds to wait for
+the database, default `60`, `0` to disable).
 
-Below you will find the volumes list created by ITSM-NG docker application and their description :
+To take over the connection configuration entirely, mount your own file over
+`/etc/itsm-ng/config_db.php`. To override PHP settings, mount an `.ini` file
+into `/etc/php/8.4/apache2/conf.d/`.
 
-| Volume           | Description                                                      |
-|------------------|------------------------------------------------------------------|
-| `itsmng-config`  | It contains the application configuration                        |
-| `itsmng-plugins` | It contains the application plugins                              |
-| `itsmng-files`   | It contains the application extra data (logs, cache, attachment) |
-| `itsmng-data`    | It contains the MariaDB instance data                            |
+## Volumes
 
-## Docker-compose.yml sample
+| Path | Description |
+|----------------------|-------------------------------------------------------------|
+| `/var/lib/itsm-ng` | the only persistent volume: cache, sessions, documents, dumps, application logs |
+| `/tmp` | writable, `tmpfs` is fine |
+| `/run/apache2` | writable, `tmpfs` is fine (pid and mutex files) |
 
-    version: '3'
-    services:
-      itsmweb :
-        image : docker.io/itsmng/itsm-ng:latest
-        depends_on:
-          - itsmdb
-        container_name : itsmweb
-        restart: always
-        ports :
-          - "8080:80"
-        volumes :
-          - itsmng-config:/etc/itsm-ng/config
-          - itsmng-plugins:/usr/share/itsm-ng/plugins
-          - itsmng-files:/var/lib/itsm-ng
-        environment:
-          MARIADB_HOST : itsmdb
-          MARIADB_USER : itsmng
-          MARIADB_PASSWORD : itsmng
-          MARIADB_DATABASE : itsmng
-          # ITSMNG_PLUGINS: |
-          #   accounts
-          #   barcode
-          #   consumables
-          #   databases
-          #   dashboardng
-          #   datainjection
-          #   edittraduction
-          #   escalade
-          #   fields
-          #   formcreator
-          #   genericobject
-          #   mreporting
-          #   news
-          #   oauthimap
-          #   ocsinventoryng
-          #   okta
-          #   onetimesecret
-          #   pdf
-          #   tag
-          #   timelineticket
-          #   useditemsexport
-          #   whitelabel
-          #   workflows
-      itsmdb :
-        image: docker.io/mariadb:10.6
-        container_name: itsmdb
-        command: --default-authentication-plugin=mysql_native_password
-        restart: always
-        volumes :
-          - itsmng-data:/var/lib/mysql
-        environment:
-          MARIADB_AUTO_UPGRADE: "yes"
-          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
-          MYSQL_ROOT_PASSWORD: iamastrongpassword
-          MARIADB_USER : itsmng
-          MARIADB_PASSWORD : itsmng
-          MARIADB_DATABASE : itsmng
+The application code, the plugins and the configuration all live in the image
+and are never mounted, which is what makes an immutable deployment possible.
 
-    volumes:
-      itsmng-config:
-      itsmng-plugins:
-      itsmng-files:
-      itsmng-data:
+## Building
+
+    cd latest
+    make build                                    # local image
+    make lint                                     # hadolint + shellcheck
+    docker buildx bake --set itsmng.args.ITSMNG_PLUGINS="formcreator pdf tag"
+
+Build arguments:
+
+| Argument | Description |
+|-----------------------|------------------------------------------------------|
+| `ITSMNG_PLUGINS` | space-separated plugin list, installed into the image |
+| `ITSMNG_APT_VERSION` | exact `itsm-ng` Debian package version to pin |
+| `ITSMNG_APT_URI` | APT repository URI |
+| `PHP_VERSION` | PHP version used for `mod_php` and the config paths |
+| `UID` | application UID (group is always `0`) |
+
+Adding a plugin means a new image, not a mutated container: append it to
+`ITSMNG_PLUGINS`, rebuild, redeploy.
 
 # Contributing
 

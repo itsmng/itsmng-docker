@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Console ITSM-NG.
+#
+#   docker compose run --rm itsmng itsmng-console itsmng:database:update
+#   kubectl exec deploy/itsm-ng -- itsmng-console list
+#
+# La connexion base est lue par /etc/itsm-ng/config_db.php depuis
+# l'environnement : aucun argument de connexion n'est necessaire.
+set -euo pipefail
+
+exec php /usr/share/itsm-ng/bin/console "$@"

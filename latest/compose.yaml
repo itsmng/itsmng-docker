@@ -1,0 +1,99 @@
+# Stack ITSM-NG de developpement / evaluation.
+#
+#   docker compose up -d          demarre base -> init (one-shot) -> web
+#   docker compose run --rm itsmng-console itsmng:database:update
+#
+# La cle `version:` n'existe plus dans la specification Compose actuelle.
+name: itsm-ng
+
+x-itsmng-image: &itsmng-image
+  image: ghcr.io/itsmng/itsm-ng:${ITSMNG_TAG:-latest}
+  environment:
+    MARIADB_HOST: db
+    MARIADB_PORT: "3306"
+    MARIADB_USER: ${MARIADB_USER:-itsmng}
+    MARIADB_PASSWORD: ${MARIADB_PASSWORD:-itsmng}
+    MARIADB_DATABASE: ${MARIADB_DATABASE:-itsmng}
+  # Aucune capability n'est requise : port non privilegie, pas de chown.
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+      MARIADB_AUTO_UPGRADE: "yes"
+      MARIADB_USER: ${MARIADB_USER:-itsmng}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-itsmng}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-itsmng}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # Schema et arborescence de donnees : execute une fois, puis sort.
+  # C'est l'equivalent du Job Kubernetes, et la raison pour laquelle le
+  # conteneur web n'a plus rien a faire a son demarrage.
+  init:
+    <<: *itsmng-image
+    command: ["itsmng-init"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - itsmng-data:/var/lib/itsm-ng
+
+  itsmng:
+    <<: *itsmng-image
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      init:
+        condition: service_completed_successfully
+    ports:
+      - "${ITSMNG_PORT:-8080}:8080"
+    # Le code et la configuration sont immuables : rien n'a besoin d'ecrire
+    # ailleurs que dans le volume de donnees.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run/apache2
+    volumes:
+      - itsmng-data:/var/lib/itsm-ng
+
+  # Passe de taches planifiees. `docker compose run --rm cron`, ou un
+  # timer/cron de l'hote. Ce n'est volontairement pas un demon.
+  cron:
+    <<: *itsmng-image
+    command: ["itsmng-cron"]
+    restart: "no"
+    profiles: [tools]
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run/apache2
+    volumes:
+      - itsmng-data:/var/lib/itsm-ng
+
+  itsmng-console:
+    <<: *itsmng-image
+    entrypoint: ["itsmng-console"]
+    restart: "no"
+    profiles: [tools]
+    volumes:
+      - itsmng-data:/var/lib/itsm-ng
+
+volumes:
+  db-data:
+  itsmng-data:

@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: itsm-ng
+  labels:
+    app.kubernetes.io/name: itsm-ng
+    app.kubernetes.io/component: web
+spec:
+  # Passer a plus de 1 exige un PVC ReadWriteMany (sessions et documents
+  # partages) et une strategie RollingUpdate compatible.
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: itsm-ng
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: itsm-ng
+        app.kubernetes.io/component: web
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 0
+        # C'est fsGroup qui donne le bon groupe au volume : il remplace
+        # exactement le `chown -R` que l'on ne peut pas faire ici.
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: itsm-ng
+          image: ghcr.io/itsmng/itsm-ng:latest
+          # Aucune commande : l'image demarre Apache directement, sans
+          # entrypoint ni script de configuration.
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: itsm-ng-db
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            failureThreshold: 30
+            periodSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/itsm-ng
+            - name: db-password
+              mountPath: /run/secrets/itsm-ng
+              readOnly: true
+            # Rootfs en lecture seule : les deux seuls chemins scriptibles
+            # hors volume de donnees sont fournis en memoire.
+            - name: tmp
+              mountPath: /tmp
+            - name: apache-run
+              mountPath: /run/apache2
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: itsm-ng-data
+        - name: db-password
+          secret:
+            secretName: itsm-ng-db
+            defaultMode: 0400
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
+        - name: apache-run
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Mi

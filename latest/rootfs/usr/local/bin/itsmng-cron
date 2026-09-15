@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Execute une passe des taches planifiees ITSM-NG, puis sort.
+#
+# A lancer depuis un CronJob Kubernetes (ou `docker compose run --rm`), et non
+# depuis un demon cron dans le conteneur web : un conteneur = un role.
+set -euo pipefail
+
+exec php /usr/share/itsm-ng/front/cron.php "$@"

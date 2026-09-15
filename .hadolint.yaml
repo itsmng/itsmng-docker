@@ -1,0 +1,13 @@
+# Regles volontairement desactivees.
+ignored:
+  # DL3008 : epingler la version de chaque paquet APT. Les versions du depot
+  # ITSM-NG et de Debian bougent ensemble ; l'epinglage utile est expose via
+  # l'argument de build ITSMNG_APT_VERSION pour le paquet applicatif.
+  - DL3008
+  # SC2086 : le decoupage en mots de ${ITSMNG_PLUGINS} est intentionnel,
+  # c'est une liste separee par des espaces.
+  - SC2086
+
+trustedRegistries:
+  - docker.io
+  - ghcr.io

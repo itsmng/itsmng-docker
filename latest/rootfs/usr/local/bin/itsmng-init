@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# Prepare l'instance : arborescence de donnees puis schema de base.
+#
+# Idempotent, et volontairement SEPARE du demarrage du serveur web :
+#   - base vide      -> itsmng:database:install
+#   - base peuplee   -> itsmng:database:update
+#
+# A lancer une fois par deploiement, via un Job Kubernetes (ou le service
+# `itsmng-init` du compose), avec le meme volume de donnees que le serveur.
+#
+# Variables : MARIADB_HOST / _PORT / _USER / _PASSWORD / _DATABASE
+#             (suffixe _FILE accepte pour chacune, pour les Secrets)
+#             ITSMNG_DB_WAIT_TIMEOUT  attente max de la base en secondes (60)
+set -euo pipefail
+
+readonly ITSMNG_DIR=/usr/share/itsm-ng
+readonly VAR_DIR=${GLPI_VAR_DIR:-/var/lib/itsm-ng}
+
+log() { printf '%s [itsmng-init] %s\n' "$(date -u +%FT%TZ)" "$*"; }
+die() { printf '%s [itsmng-init] ERREUR: %s\n' "$(date -u +%FT%TZ)" "$*" >&2; exit 1; }
+
+# Lit VAR, ou le contenu de VAR_FILE (Secret monte en fichier), ou un defaut.
+env_or_file() {
+	local name=$1 default=${2-} file_var="${1}_FILE"
+
+	if [ -n "${!file_var:-}" ]; then
+		[ -r "${!file_var}" ] || die "${file_var} illisible: ${!file_var}"
+		printf '%s' "$(tr -d '\r\n' < "${!file_var}")"
+		return
+	fi
+	printf '%s' "${!name:-$default}"
+}
+
+db_host=$(env_or_file MARIADB_HOST localhost)
+db_port=$(env_or_file MARIADB_PORT 3306)
+db_user=$(env_or_file MARIADB_USER itsmng)
+db_password=$(env_or_file MARIADB_PASSWORD '')
+db_name=$(env_or_file MARIADB_DATABASE itsmng)
+wait_timeout=${ITSMNG_DB_WAIT_TIMEOUT:-60}
+
+# ---------------------------------------------------------------------------
+# 1. Arborescence de donnees.
+#
+# Elle est creee ici et non au build : un volume persistant monte sur
+# ${VAR_DIR} masquerait tout contenu venant de l'image.
+# ---------------------------------------------------------------------------
+log "preparation de ${VAR_DIR}"
+mkdir -p \
+	"${VAR_DIR}/_cache" \
+	"${VAR_DIR}/_cron" \
+	"${VAR_DIR}/_dumps" \
+	"${VAR_DIR}/_graphs" \
+	"${VAR_DIR}/_inventories" \
+	"${VAR_DIR}/_lock" \
+	"${VAR_DIR}/_log" \
+	"${VAR_DIR}/_pictures" \
+	"${VAR_DIR}/_plugins" \
+	"${VAR_DIR}/_rss" \
+	"${VAR_DIR}/_sessions" \
+	"${VAR_DIR}/_tmp" \
+	"${VAR_DIR}/_uploads"
+
+# Pas de chown : sous Kubernetes c'est fsGroup qui donne le groupe du volume,
+# et le processus ne possede de toute facon pas les fichiers d'autrui.
+# On se contente d'ouvrir au groupe ce que l'on vient de creer.
+chmod -R g+rwX "${VAR_DIR}" 2>/dev/null || true
+
+# ---------------------------------------------------------------------------
+# 2. Attente de la base (bornee : un Job qui echoue est relance par k8s).
+# ---------------------------------------------------------------------------
+db_table_count() {
+	MARIADB_HOST="$db_host" MARIADB_PORT="$db_port" MARIADB_USER="$db_user" \
+	MARIADB_PASSWORD="$db_password" MARIADB_DATABASE="$db_name" \
+	php -r '
+		mysqli_report(MYSQLI_REPORT_OFF);
+		$c = @new mysqli(
+			getenv("MARIADB_HOST"), getenv("MARIADB_USER"),
+			getenv("MARIADB_PASSWORD"), getenv("MARIADB_DATABASE"),
+			(int) getenv("MARIADB_PORT")
+		);
+		if ($c->connect_errno) { fwrite(STDERR, $c->connect_error . PHP_EOL); exit(1); }
+		$r = $c->query(
+			"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()"
+		);
+		if (!$r) { fwrite(STDERR, $c->error . PHP_EOL); exit(1); }
+		echo (int) $r->fetch_row()[0];
+	'
+}
+
+if [ "${wait_timeout}" -gt 0 ]; then
+	log "attente de ${db_host}:${db_port} (max ${wait_timeout}s)"
+	deadline=$(( $(date +%s) + wait_timeout ))
+	until tables=$(db_table_count 2>/dev/null); do
+		[ "$(date +%s)" -lt "${deadline}" ] || die "base injoignable apres ${wait_timeout}s"
+		sleep 2
+	done
+else
+	tables=$(db_table_count) || die "base injoignable"
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Installation ou migration.
+#
+# Note : `itsmng:database:install` reecrit config_db.php. Cette reecriture a
+# lieu dans la couche ephemere du conteneur d'init et n'affecte pas le serveur
+# web, qui lit sa configuration depuis l'environnement.
+# ---------------------------------------------------------------------------
+console() { php "${ITSMNG_DIR}/bin/console" "$@"; }
+supports() { console help "$1" 2>/dev/null | grep -q -- "$2"; }
+
+if [ "${tables}" -eq 0 ]; then
+	log "base '${db_name}' vide : installation du schema"
+	# Formes courtes : elles sont stables d'une version d'ITSM-NG a l'autre,
+	# contrairement a certaines options longues. Le reste est ajoute
+	# uniquement si la commande l'annonce dans son aide.
+	args=(-n -H "${db_host}" -u "${db_user}" -d "${db_name}")
+	[ -n "${db_password}" ] && args+=("-p${db_password}")
+	supports itsmng:database:install --db-port && args+=("--db-port=${db_port}")
+	supports itsmng:database:install --reconfigure && args+=(--reconfigure)
+	supports itsmng:database:install --force && args+=(--force)
+	console itsmng:database:install "${args[@]}"
+else
+	log "base '${db_name}' deja peuplee (${tables} tables) : migration"
+	console itsmng:database:update --no-interaction
+fi
+
+log "termine"

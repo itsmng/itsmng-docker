@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Exemple de deploiement conforme au profil Pod Security Admission
+# "restricted" : UID non-root, aucune capability, rootfs en lecture seule,
+# aucun chown au demarrage.
+#
+#   kubectl create ns itsm-ng
+#   kubectl label ns itsm-ng \
+#     pod-security.kubernetes.io/enforce=restricted \
+#     pod-security.kubernetes.io/enforce-version=latest
+#   kubectl -n itsm-ng apply -k .
+#   kubectl -n itsm-ng wait --for=condition=complete job/itsm-ng-init --timeout=10m
+
+resources:
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - job-init.yaml
+  - cronjob.yaml
+
+images:
+  - name: ghcr.io/itsmng/itsm-ng
+    newTag: latest
+
+# Le mot de passe est consomme via MARIADB_PASSWORD_FILE : il est monte en
+# fichier et n'apparait donc pas dans l'environnement du processus.
+secretGenerator:
+  - name: itsm-ng-db
+    literals:
+      - password=change-me
+
+configMapGenerator:
+  - name: itsm-ng-db
+    literals:
+      - MARIADB_HOST=mariadb
+      - MARIADB_PORT="3306"
+      - MARIADB_USER=itsmng
+      - MARIADB_DATABASE=itsmng
+      - MARIADB_PASSWORD_FILE=/run/secrets/itsm-ng/password

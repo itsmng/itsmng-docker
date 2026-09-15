@@ -1,3 +1,10 @@
-# Ignore files that contains volumes
-itsmng* 
+# Repertoires de volumes crees par podman-compose / docker compose a la racine.
+# Motif volontairement ancre et limite aux repertoires : un motif global
+# `itsmng*` ignorait aussi les commandes itsmng-* livrees dans l'image.
+/itsmng-*/
 
+# Fichier d'environnement local du compose
+.env
+.env.local
+
+.DS_Store

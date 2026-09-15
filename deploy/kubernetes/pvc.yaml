@@ -1,0 +1,13 @@
+# Seul volume persistant necessaire : cache, sessions, documents, dumps, logs
+# applicatifs. La configuration, elle, vient de l'environnement.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: itsm-ng-data
+spec:
+  accessModes:
+    # ReadWriteMany si l'on veut plusieurs replicas du serveur web.
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi

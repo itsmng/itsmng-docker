@@ -1,12 +1,44 @@
 name: Build Docker Image
+
 on:
   push:
     tags:
       - '*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: latest/Dockerfile
+
+      - name: Lint shell scripts
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck --severity=warning latest/rootfs/usr/local/bin/itsmng-*
+
   build:
     runs-on: ubuntu-latest
+    needs: lint
+    permissions:
+      contents: read
+      packages: write
+      # Requis pour signer les attestations de provenance SLSA.
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -18,47 +50,88 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Log into GitHub Container Registry
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log into Docker.io Container Registry
+      - name: Log into Docker Hub
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v4
         with:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Compute tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/itsmng/itsm-ng
+            docker.io/itsmng/itsm-ng
+          tags: |
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            type=ref,event=pr
+
+      # Une seule image pour tous les roles : serveur web, Job d'init et cron
+      # ne sont que des commandes differentes de la meme image. Les tags
+      # "-cron" restent publies en alias, pour compatibilite.
       - name: Build and push
+        id: push
         uses: docker/build-push-action@v7
         with:
-          push: true
-          tags: |
-            ghcr.io/itsmng/itsm-ng:${{ github.ref_name }}
-            ghcr.io/itsmng/itsm-ng:latest
-            docker.io/itsmng/itsm-ng:${{ github.ref_name }}
-            docker.io/itsmng/itsm-ng:latest
-          build-args: |
-            VERSION=${{ github.ref_name }}
           context: latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
-
-
-
-      - name: Build and push cron image
-        uses: docker/build-push-action@v7
-        with:
-          push: true
-          tags: |
-            ghcr.io/itsmng/itsm-ng:${{ github.ref_name }}-cron
-            ghcr.io/itsmng/itsm-ng:latest-cron
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ github.ref_name }}
-          context: cron
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+          # Les attestations ne sont pas supportees par l'exporteur docker
+          # (utilise par `load` sur les PR) : on ne les produit qu'au push.
+          provenance: ${{ github.event_name != 'pull_request' && 'mode=max' || 'false' }}
+          sbom: ${{ github.event_name != 'pull_request' }}
+
+      # Verifie ce que l'on promet : le conteneur sert /healthz sans base de
+      # donnees, sans privileges, en lecture seule et sous un UID arbitraire.
+      - name: Smoke test
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          image="$(printf '%s' "${{ steps.meta.outputs.tags }}" | head -n1)"
+          docker run -d --name itsmng-smoke \
+            --user 41234:0 \
+            --read-only --tmpfs /tmp --tmpfs /run/apache2 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            -p 8080:8080 "$image"
+          ok=""
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/healthz; then ok=1; break; fi
+            sleep 2
+          done
+          docker logs itsmng-smoke
+          test -n "$ok"
+
+      - name: Publish cron aliases
+        if: github.event_name != 'pull_request'
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          for registry in ghcr.io/itsmng docker.io/itsmng; do
+            for tag in "${REF_NAME}-cron" latest-cron; do
+              docker buildx imagetools create \
+                --tag "${registry}/itsm-ng:${tag}" \
+                "${registry}/itsm-ng@${DIGEST}"
+            done
+          done

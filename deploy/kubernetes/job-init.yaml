@@ -1,0 +1,66 @@
+# Installation du schema et de l'arborescence de donnees.
+#
+# C'est ici que vivent les operations qui etaient auparavant executees a
+# chaque demarrage du conteneur web : une fois par deploiement, de facon
+# explicite et observable, avec un code de sortie qui a du sens.
+#
+# La commande est idempotente : base vide -> install, base existante ->
+# migration. Relancer le Job apres une montee de version d'image suffit.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: itsm-ng-init
+  annotations:
+    # Avec Helm/ArgoCD, en faire un hook pre-install/pre-upgrade.
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 0
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: init
+          image: ghcr.io/itsmng/itsm-ng:latest
+          command: ["itsmng-init"]
+          envFrom:
+            - configMapRef:
+                name: itsm-ng-db
+          securityContext:
+            allowPrivilegeEscalation: false
+            # Seule exception au rootfs en lecture seule : la commande
+            # d'installation d'ITSM-NG reecrit config_db.php. Cette ecriture
+            # reste dans la couche ephemere du Job et n'est pas persistee ;
+            # le serveur web lit sa configuration dans l'environnement.
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/itsm-ng
+            - name: db-password
+              mountPath: /run/secrets/itsm-ng
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: itsm-ng-data
+        - name: db-password
+          secret:
+            secretName: itsm-ng-db
+            defaultMode: 0400
