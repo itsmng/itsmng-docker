@@ -139,6 +139,14 @@ Below you will find the volumes list created by ITSM-NG docker application and t
       itsmng-files:
       itsmng-data:
 
+## Deploy with Easypanel
+
+[Easypanel](https://easypanel.io) is a self-hosted Docker deployment platform, and ITSM-NG has a one-click deployment template there.
+
+[![Deploy on Easypanel](https://easypanel.io/img/deploy-on-easypanel-40.svg)](https://easypanel.io/templates/itsmng)
+
+The template sets up ITSM-NG with a MariaDB database and persistent volumes for config, plugins, and files automatically.
+
 # Contributing
 
 1. Fork it!
